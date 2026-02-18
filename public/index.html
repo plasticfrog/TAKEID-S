@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRDI TakeID Search</title>
+    <title>SRDI TakeID Hub</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,19 +11,38 @@
     <div class="quick-ref">
         <h3>Common Codes</h3>
         <ul>
-            <li>
-                <span>PTS / REB / ASST</span>
-                <span class="ref-id">5111</span>
-            </li>
-            </ul>
+            <li><span>PTS / REB / ASST</span><span class="ref-id">5111</span></li>
+        </ul>
     </div>
 
     <div class="container">
-        <h1>SRDI TakeID Search</h1>
-        <div class="search-wrapper">
-            <input type="text" id="searchInput" placeholder="Type category (e.g. pts ass)..." autocomplete="off">
-            <div id="resultsList" class="results-list"></div>
+        <h1>SRDI TakeID Hub</h1>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('search')">Search DB</button>
+            <button class="tab-btn" onclick="switchTab('tracker')">Live Tracker</button>
         </div>
+
+        <div id="search-view" class="view-section">
+            <div class="search-wrapper">
+                <input type="text" id="searchInput" placeholder="Type category (e.g. pts ass)..." autocomplete="off">
+                <div id="resultsList" class="results-list"></div>
+            </div>
+        </div>
+
+        <div id="tracker-view" class="view-section" style="display: none;">
+            <div class="tracker-controls">
+                <select id="gameSelect">
+                    <option value="">Loading games...</option>
+                </select>
+                <button id="refreshBtn">↻</button>
+            </div>
+            <div id="statusText" class="status-text">Select a game to start tracking...</div>
+            
+            <div id="trackerResults">
+                </div>
+        </div>
+
     </div>
 
     <script src="script.js"></script>
