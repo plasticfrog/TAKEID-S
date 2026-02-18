@@ -5,19 +5,16 @@ fetch('data.json')
     .then(response => response.json())
     .then(data => { dataset = data; });
 
-// --- SEARCH LOGIC ---
+// --- SEARCH LOGIC (No Changes) ---
 const searchInput = document.getElementById('searchInput');
 const resultsList = document.getElementById('resultsList');
 
 searchInput.addEventListener('keyup', (e) => {
     let query = e.target.value.toLowerCase().replace(/\//g, ' ').trim();
-    query = query.split(' ').map(word => word.replace(/s$/, '')).join(' '); // remove plurals
+    query = query.split(' ').map(word => word.replace(/s$/, '')).join(' '); 
     resultsList.innerHTML = ''; 
 
-    if (query.length === 0) {
-        resultsList.style.display = 'none';
-        return;
-    }
+    if (query.length === 0) { resultsList.style.display = 'none'; return; }
 
     const matches = dataset.filter(item => {
         const cleanCategory = item.category.toLowerCase().replace(/\//g, ' ');
@@ -49,7 +46,7 @@ const trackerResults = document.getElementById('trackerResults');
 const statusText = document.getElementById('statusText');
 let trackingInterval = null;
 
-// 1. Fetch Games on Load
+// Fetch Games
 fetch('/api/games')
     .then(res => res.json())
     .then(games => {
@@ -65,21 +62,23 @@ fetch('/api/games')
         gameSelect.innerHTML = '<option>Error loading games</option>';
     });
 
-// 2. Handle Selection
+// Handle Selection
 gameSelect.addEventListener('change', () => {
     const gameId = gameSelect.value;
     if (trackingInterval) clearInterval(trackingInterval);
     
     if (gameId) {
         statusText.textContent = "Fetching live data...";
-        updateTracker(gameId); // Immediate update
-        trackingInterval = setInterval(() => updateTracker(gameId), 40000); // 40s loop
+        updateTracker(gameId); 
+        // 200 Seconds = 200,000 milliseconds
+        trackingInterval = setInterval(() => updateTracker(gameId), 200000); 
     } else {
         trackerResults.innerHTML = '';
         statusText.textContent = "Select a game to start tracking...";
     }
 });
 
+// Manual Refresh
 document.getElementById('refreshBtn').addEventListener('click', () => {
     if(gameSelect.value) updateTracker(gameSelect.value);
 });
@@ -89,8 +88,8 @@ async function updateTracker(gameId) {
         statusText.textContent = `Updating... (${new Date().toLocaleTimeString()})`;
         const res = await fetch(`/api/game/${gameId}`);
         const data = await res.json();
-        
         renderTracker(data.teams);
+        statusText.textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
     } catch (err) {
         statusText.textContent = "Error fetching data.";
     }
@@ -104,20 +103,32 @@ function renderTracker(teams) {
 
         const teamDiv = document.createElement('div');
         teamDiv.classList.add('team-block');
-        
         teamDiv.innerHTML = `<h3>${team.team}</h3>`;
         
         const table = document.createElement('table');
         table.classList.add('tracker-table');
-        table.innerHTML = `<tr><th>Player</th><th>Stats</th><th>Category</th><th>ID</th></tr>`;
+        table.innerHTML = `<tr><th width="25%">Player</th><th width="35%">Stats</th><th>Best Fits</th></tr>`;
         
         team.players.forEach(p => {
             const row = document.createElement('tr');
+            
+            // Build the Matches HTML
+            let matchesHtml = '';
+            if (p.matches && p.matches.length > 0) {
+                matchesHtml = p.matches.map(m => 
+                    `<div class="match-badge">
+                        <span class="match-cat">${m.category}</span>
+                        <span class="match-id">${m.id}</span>
+                     </div>`
+                ).join('');
+            } else {
+                matchesHtml = '<span class="no-match">-</span>';
+            }
+
             row.innerHTML = `
-                <td>${p.name}</td>
+                <td class="player-name">${p.name}</td>
                 <td class="stat-sum">${p.statsSummary}</td>
-                <td>${p.match.category}</td>
-                <td><span class="take-id-sm">${p.match.id}</span></td>
+                <td class="match-cell">${matchesHtml}</td>
             `;
             table.appendChild(row);
         });
@@ -131,10 +142,7 @@ function renderTracker(teams) {
 window.switchTab = function(tabName) {
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
     document.getElementById(tabName + '-view').style.display = 'block';
-    
-    // Find button that called this (hacky but works)
     const buttons = document.querySelectorAll('.tab-btn');
     if(tabName === 'search') buttons[0].classList.add('active');
     else buttons[1].classList.add('active');
