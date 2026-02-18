@@ -51,13 +51,20 @@ function getTopMatches(playerStats) {
     const matches = [];
     TAKE_ID_DB.forEach(item => {
         if (!item.required || item.required.length === 0) return;
+        
+        // FILTER: Ignore Time-Based categories for now since we only have Game Totals
+        const catUpper = item.category.toUpperCase();
+        if (catUpper.includes("QTR") || catUpper.includes("HALF") || catUpper.includes("SINCE") || catUpper.includes("SEASON")) {
+            return;
+        }
+
         const hasAll = item.required.every(req => notable.has(req));
         if (hasAll) {
             matches.push({
                 id: item.id,
                 category: item.category,
                 score: item.required.length, 
-                required: item.required // Save this to use for display later
+                required: item.required
             });
         }
     });
@@ -66,40 +73,44 @@ function getTopMatches(playerStats) {
     return matches.slice(0, 3);
 }
 
-function getDynamicStatString(stats, bestMatch) {
-    let parts = [];
+function getDynamicStatString(stats, topMatches) {
+    // Collect ALL required stats from ALL top matches
+    const statsToShow = new Set();
     
-    // 1. If we have a match, showing ITS stats is priority #1
-    if (bestMatch && bestMatch.required) {
-        bestMatch.required.forEach(reqKey => {
-            let label = reqKey.toLowerCase();
-            if(reqKey === "3-PT FG") label = "3pm";
-            if(reqKey === "REBS") label = "reb";
-            if(reqKey === "ASSTS") label = "ast";
-            if(reqKey === "BLKS") label = "blk";
-            if(reqKey === "STLS") label = "stl";
-            
-            // Format stats like "4-6" for FG/FT, or just value for others
-            let val = stats[reqKey];
-            
-            // Handle FG/FT/3PT specifically (if stored as raw numbers in stats obj)
-            // Note: In our main loop, we parse specific "raw strings" for display below.
-            // For simplicity here, we assume 'stats' object holds clean ints. 
-            // We'll pass a "displayStats" object to this function to handle "4-6" strings better.
-            
-            parts.push(`${val} ${label}`);
+    if (topMatches && topMatches.length > 0) {
+        topMatches.forEach(match => {
+            if(match.required) {
+                match.required.forEach(r => statsToShow.add(r));
+            }
         });
     }
 
-    // 2. If no match, or list is short, add generic high stats
-    if (parts.length === 0) {
-        if (stats.PTS > 0) parts.push(`${stats.PTS} pts`);
-        if (stats.REBS >= 5) parts.push(`${stats.REBS} reb`);
-        if (stats.ASSTS >= 4) parts.push(`${stats.ASSTS} ast`);
-    }
+    // Always show PTS if they scored, even if not in a category
+    if (stats.PTS > 0) statsToShow.add("PTS");
 
-    // Deduplicate strings just in case
-    return [...new Set(parts)].join(', ');
+    // Convert Set to Array and Sort (PTS first, then REB/AST)
+    const sortedKeys = Array.from(statsToShow).sort((a, b) => {
+        const order = ["PTS", "REBS", "ASSTS", "FG", "3-PT FG", "FT", "BLKS", "STLS"];
+        return order.indexOf(a) - order.indexOf(b);
+    });
+
+    const parts = [];
+    sortedKeys.forEach(key => {
+        let val = stats[key];
+        // Skip if 0 (unless it's points or explicitly required)
+        if (val == 0 && key !== "PTS") return;
+
+        let label = key.toLowerCase();
+        if(key === "3-PT FG") label = "3pm";
+        if(key === "REBS") label = "reb";
+        if(key === "ASSTS") label = "ast";
+        if(key === "BLKS") label = "blk";
+        if(key === "STLS") label = "stl";
+        
+        parts.push(`${val} ${label}`);
+    });
+
+    return parts.join(', ');
 }
 
 // --- API ENDPOINTS ---
@@ -131,7 +142,6 @@ app.get('/api/game/:id', async (req, res) => {
         const response = await fetch(url);
         const data = await response.json();
 
-        // Get Home/Away info
         const competitors = data.header?.competitions?.[0]?.competitors || [];
         const homeTeamId = competitors.find(c => c.homeAway === 'home')?.id;
 
@@ -141,7 +151,7 @@ app.get('/api/game/:id', async (req, res) => {
         for (const teamGroup of playerGroups) {
             const teamId = teamGroup.team.id;
             const teamName = teamGroup.team.displayName;
-            const teamColor = teamGroup.team.color || "333333"; // Default dark grey
+            const teamColor = teamGroup.team.color || "333333";
             const isHome = teamId === homeTeamId;
             
             const processedPlayers = [];
@@ -170,7 +180,6 @@ app.get('/api/game/:id', async (req, res) => {
                     const jersey = ath.athlete.jersey || "00";
                     const raw = ath.stats;
 
-                    // Helper for integers
                     const getVal = (key) => {
                         const i = idx[key];
                         if (i === -1 || !raw[i]) return 0;
@@ -179,7 +188,6 @@ app.get('/api/game/:id', async (req, res) => {
                         return parseInt(val) || 0;
                     };
 
-                    // Helper for Strings (like "4-6")
                     const getStr = (key) => {
                          const i = idx[key];
                          return (i !== -1 && raw[i]) ? raw[i] : "0";
@@ -198,7 +206,6 @@ app.get('/api/game/:id', async (req, res) => {
                         MINS: getVal("MIN")
                     };
                     
-                    // Specific Display Object (Keeps "4-6" formats)
                     const displayStats = {
                         ...pStats,
                         "FG": getStr("FG"),
@@ -212,8 +219,8 @@ app.get('/api/game/:id', async (req, res) => {
                         processedPlayers.push({
                             name: name,
                             jersey: jersey,
-                            // Pass the 'displayStats' which has strings like "4-6", and the best match
-                            statsSummary: getDynamicStatString(displayStats, topMatches[0]),
+                            // Pass ALL top matches so we can show ALL relevant stats
+                            statsSummary: getDynamicStatString(displayStats, topMatches),
                             matches: topMatches
                         });
                     }
