@@ -7,7 +7,6 @@ const port = process.env.PORT || 3000;
 app.use(express.static('public'));
 
 // --- CONFIGURATION ---
-// To switch to NBA later, just change this to "nba"
 const LEAGUE = "mens-college-basketball"; 
 // const LEAGUE = "nba"; 
 
@@ -19,7 +18,6 @@ try {
     const rawData = fs.readFileSync(dataPath);
     const json = JSON.parse(rawData);
     
-    // Pre-process: Create "required" list for fast matching
     TAKE_ID_DB = json.map(item => {
         const parts = item.category.split('/').map(s => s.trim());
         const validKeys = ["PTS", "REBS", "ASSTS", "BLKS", "STLS", "FOULS", "FG", "FT", "3-PT FG", "TO", "MINS", "OFF REBS", "FGS", "TECHNICAL", "EJECTED", "BIO"];
@@ -44,52 +42,64 @@ function findStatIndex(names, target) {
 }
 
 function getTopMatches(playerStats) {
-    // 1. Identify Notable Stats
     const notable = new Set();
     for (const [key, val] of Object.entries(playerStats)) {
         const limit = THRESHOLDS[key] || 999;
         if (val >= limit) notable.add(key);
     }
 
-    // 2. Score Database Items
     const matches = [];
     TAKE_ID_DB.forEach(item => {
         if (!item.required || item.required.length === 0) return;
-        
-        // Check if player has ALL required stats
         const hasAll = item.required.every(req => notable.has(req));
-        
         if (hasAll) {
             matches.push({
                 id: item.id,
                 category: item.category,
-                score: item.required.length // Priority to more specific matches
+                score: item.required.length, 
+                required: item.required // Save this to use for display later
             });
         }
     });
 
-    // 3. Sort by Score (Desc) and take top 3
     matches.sort((a, b) => b.score - a.score);
     return matches.slice(0, 3);
 }
 
-function getDynamicStatString(stats) {
-    // Returns a string of the most impressive stats, not just P/R/A
+function getDynamicStatString(stats, bestMatch) {
     let parts = [];
-    // Always show points if significant
-    if (stats.PTS > 0) parts.push(`${stats.PTS}pts`);
     
-    // Check other categories against thresholds or if they are non-zero
-    if (stats.REBS >= 3) parts.push(`${stats.REBS}reb`);
-    if (stats.ASSTS >= 3) parts.push(`${stats.ASSTS}ast`);
-    if (stats.BLKS >= 1) parts.push(`${stats.BLKS}blk`);
-    if (stats.STLS >= 1) parts.push(`${stats.STLS}stl`);
-    if (stats["3-PT FG"] >= 2) parts.push(`${stats["3-PT FG"]} 3pm`);
-    
-    // Fallback if low stats
-    if (parts.length === 1 && stats.REBS > 0) parts.push(`${stats.REBS}reb`);
-    
-    return parts.join(' ');
+    // 1. If we have a match, showing ITS stats is priority #1
+    if (bestMatch && bestMatch.required) {
+        bestMatch.required.forEach(reqKey => {
+            let label = reqKey.toLowerCase();
+            if(reqKey === "3-PT FG") label = "3pm";
+            if(reqKey === "REBS") label = "reb";
+            if(reqKey === "ASSTS") label = "ast";
+            if(reqKey === "BLKS") label = "blk";
+            if(reqKey === "STLS") label = "stl";
+            
+            // Format stats like "4-6" for FG/FT, or just value for others
+            let val = stats[reqKey];
+            
+            // Handle FG/FT/3PT specifically (if stored as raw numbers in stats obj)
+            // Note: In our main loop, we parse specific "raw strings" for display below.
+            // For simplicity here, we assume 'stats' object holds clean ints. 
+            // We'll pass a "displayStats" object to this function to handle "4-6" strings better.
+            
+            parts.push(`${val} ${label}`);
+        });
+    }
+
+    // 2. If no match, or list is short, add generic high stats
+    if (parts.length === 0) {
+        if (stats.PTS > 0) parts.push(`${stats.PTS} pts`);
+        if (stats.REBS >= 5) parts.push(`${stats.REBS} reb`);
+        if (stats.ASSTS >= 4) parts.push(`${stats.ASSTS} ast`);
+    }
+
+    // Deduplicate strings just in case
+    return [...new Set(parts)].join(', ');
 }
 
 // --- API ENDPOINTS ---
@@ -121,14 +131,22 @@ app.get('/api/game/:id', async (req, res) => {
         const response = await fetch(url);
         const data = await response.json();
 
+        // Get Home/Away info
+        const competitors = data.header?.competitions?.[0]?.competitors || [];
+        const homeTeamId = competitors.find(c => c.homeAway === 'home')?.id;
+
         const processedTeams = [];
         const playerGroups = data.boxscore?.players || [];
 
         for (const teamGroup of playerGroups) {
+            const teamId = teamGroup.team.id;
             const teamName = teamGroup.team.displayName;
+            const teamColor = teamGroup.team.color || "333333"; // Default dark grey
+            const isHome = teamId === homeTeamId;
+            
             const processedPlayers = [];
-
             const statsList = teamGroup.statistics || [];
+            
             if (statsList.length > 0) {
                 const statsData = statsList[0];
                 const names = statsData.names; 
@@ -149,14 +167,22 @@ app.get('/api/game/:id', async (req, res) => {
 
                 for (const ath of athletes) {
                     const name = ath.athlete.displayName;
+                    const jersey = ath.athlete.jersey || "00";
                     const raw = ath.stats;
 
+                    // Helper for integers
                     const getVal = (key) => {
                         const i = idx[key];
                         if (i === -1 || !raw[i]) return 0;
                         let val = raw[i];
                         if (val.includes('-')) val = val.split('-')[0];
                         return parseInt(val) || 0;
+                    };
+
+                    // Helper for Strings (like "4-6")
+                    const getStr = (key) => {
+                         const i = idx[key];
+                         return (i !== -1 && raw[i]) ? raw[i] : "0";
                     };
 
                     const pStats = {
@@ -171,22 +197,34 @@ app.get('/api/game/:id', async (req, res) => {
                         FT: getVal("FT"),
                         MINS: getVal("MIN")
                     };
+                    
+                    // Specific Display Object (Keeps "4-6" formats)
+                    const displayStats = {
+                        ...pStats,
+                        "FG": getStr("FG"),
+                        "FT": getStr("FT"),
+                        "3-PT FG": getStr("3-PT FG")
+                    };
 
-                    // Get top 3 matches instead of just 1
                     const topMatches = getTopMatches(pStats);
                     
-                    // Only include player if they have at least one valid category match
-                    // OR if they have significant stats (e.g. > 10 pts) even if no match found
                     if (topMatches.length > 0 || pStats.PTS >= 10) {
                         processedPlayers.push({
                             name: name,
-                            statsSummary: getDynamicStatString(pStats),
+                            jersey: jersey,
+                            // Pass the 'displayStats' which has strings like "4-6", and the best match
+                            statsSummary: getDynamicStatString(displayStats, topMatches[0]),
                             matches: topMatches
                         });
                     }
                 }
             }
-            processedTeams.push({ team: teamName, players: processedPlayers });
+            processedTeams.push({ 
+                team: teamName, 
+                color: teamColor, 
+                isHome: isHome,
+                players: processedPlayers 
+            });
         }
 
         res.json({ teams: processedTeams });
