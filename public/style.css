@@ -1,64 +1,110 @@
-/* ... [Previous CSS for Body, Tabs, Search] ... */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #f4f4f9;
     display: flex;
     justify-content: center;
-    padding-top: 20px;
+    padding-top: 10px; /* Reduced top padding */
     margin: 0;
 }
-.container { width: 95%; max-width: 800px; }
-h1 { text-align: center; color: #333; margin-bottom: 20px;}
 
-/* TABS & SEARCH (Keep existing) */
-.nav-tabs { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
-.tab-btn { background: none; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; color: #666; border-bottom: 3px solid transparent; }
+.container {
+    width: 98%; /* Use more screen width */
+    max-width: 900px;
+}
+
+h1 { text-align: center; color: #333; margin-bottom: 15px; font-size: 1.5em; }
+
+/* TABS */
+.nav-tabs { display: flex; justify-content: center; margin-bottom: 10px; border-bottom: 2px solid #ddd; }
+.tab-btn { background: none; border: none; padding: 8px 20px; font-size: 15px; cursor: pointer; color: #666; border-bottom: 3px solid transparent; }
 .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; font-weight: bold; }
-.search-wrapper { position: relative; margin-top: 10px;}
-input { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+
+/* SEARCH */
+.search-wrapper { position: relative; margin-top: 5px;}
+input { width: 100%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
 .results-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; border-radius: 0 0 8px 8px;}
-.result-item { padding: 8px 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.result-item { padding: 6px 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 .result-item:hover { background-color: #f0f8ff; }
-.category-text { font-weight: 500; color: #333; font-size: 0.95em; }
-.take-id { font-weight: 800; color: #0056b3; font-family: monospace; font-size: 1.2em; background: #e7f1ff; padding: 1px 6px; border-radius: 4px; }
+.category-text { font-weight: 500; color: #333; font-size: 0.9em; }
+.take-id { font-weight: 800; color: #0056b3; font-family: monospace; font-size: 1.1em; background: #e7f1ff; padding: 1px 6px; border-radius: 4px; }
 
-/* --- NEW TRACKER STYLES --- */
-.tracker-controls { display: flex; gap: 10px; margin-bottom: 10px; }
-#gameSelect { flex-grow: 1; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
-#refreshBtn { padding: 10px 15px; font-size: 18px; cursor: pointer; background: white; border: 1px solid #ccc; border-radius: 6px; }
+/* TRACKER CONTROLS */
+.tracker-controls { display: flex; gap: 8px; margin-bottom: 8px; }
+#gameSelect { flex-grow: 1; padding: 8px; font-size: 14px; border-radius: 6px; border: 1px solid #ccc; }
+#refreshBtn { padding: 8px 12px; font-size: 16px; cursor: pointer; background: white; border: 1px solid #ccc; border-radius: 6px; }
 
-.status-text { font-size: 12px; color: #888; text-align: right; margin-bottom: 15px; }
+.status-text { font-size: 11px; color: #888; text-align: right; margin-bottom: 10px; }
 
-/* Team Block */
-.team-block { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }
+/* TEAM BLOCK - COMPACTED */
+.team-block { 
+    background: white; 
+    border-radius: 6px; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    margin-bottom: 10px; /* Reduced margin between teams */
+    overflow: hidden; 
+}
 
-/* Dynamic Header */
-.team-header { padding: 15px; color: white; }
-.team-header h3 { margin: 0; font-size: 1.2em; text-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: space-between; }
-.loc-badge { font-size: 0.7em; opacity: 0.8; font-weight: normal; margin-top: 4px;}
+.team-header { 
+    padding: 8px 12px; /* Reduced padding */
+    color: white; 
+}
+.team-header h3 { 
+    margin: 0; 
+    font-size: 1.1em; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2); 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+}
+.loc-badge { font-size: 0.7em; opacity: 0.9; font-weight: normal; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px; }
 
-.tracker-table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
-.tracker-table th { text-align: left; color: #888; font-weight: normal; padding: 10px; border-bottom: 2px solid #eee; background: #fdfdfd; }
-.tracker-table td { padding: 12px 10px; border-bottom: 1px solid #f9f9f9; vertical-align: middle;}
+/* TABLE - COMPACTED */
+.tracker-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+.tracker-table th { 
+    text-align: left; 
+    color: #666; 
+    font-weight: 600; 
+    padding: 6px 10px; /* Reduced padding */
+    border-bottom: 1px solid #eee; 
+    background: #f8f9fa; 
+}
+.tracker-table td { 
+    padding: 6px 10px; /* Drastically reduced padding */
+    border-bottom: 1px solid #f1f1f1; 
+    vertical-align: middle;
+}
 
 /* Player Column */
-.player-name { font-weight: 500; color: #222; }
-.jersey { color: #888; font-size: 0.85em; margin-right: 5px; font-weight: normal; }
+.player-name { font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jersey { color: #999; font-size: 0.9em; margin-right: 4px; font-weight: normal; display: inline-block; width: 20px;}
 
 /* Stats Column */
-.stat-sum { color: #444; font-size: 0.95em; font-weight: 500; }
+.stat-sum { 
+    color: #333; 
+    font-size: 0.9em; 
+    line-height: 1.3; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}
 
 /* Match Column */
-.match-cell { display: flex; flex-direction: column; gap: 4px; }
-.match-badge { display: flex; justify-content: space-between; background: #f4f6f8; border: 1px solid #eee; border-radius: 4px; padding: 4px 8px; font-size: 0.85em; }
-.match-cat { color: #555; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-cell { display: flex; flex-direction: column; gap: 2px; }
+.match-badge { 
+    display: flex; 
+    justify-content: space-between; 
+    background: #fdfdfd; 
+    border: 1px solid #eee; 
+    border-radius: 3px; 
+    padding: 2px 5px; 
+    font-size: 0.8em; 
+}
+.match-cat { color: #555; margin-right: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .match-id { font-weight: bold; color: #0056b3; font-family: monospace; }
-.no-match { color: #ccc; font-style: italic; }
+.no-match { color: #ccc; font-style: italic; font-size: 0.8em; }
 
-/* Reference Box */
-.quick-ref { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 200px; z-index: 500; display: none; }
-@media (min-width: 1000px) { .quick-ref { display: block; } }
-.quick-ref h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+/* REFERENCE BOX */
+.quick-ref { position: fixed; top: 10px; right: 10px; background: white; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 180px; z-index: 500; display: none; }
+@media (min-width: 1100px) { .quick-ref { display: block; } }
+.quick-ref h3 { margin: 0 0 5px 0; font-size: 12px; color: #666; border-bottom: 1px solid #eee; padding-bottom: 4px; }
 .quick-ref ul { list-style: none; padding: 0; margin: 0; }
-.quick-ref li { font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.quick-ref li { font-size: 12px; margin-bottom: 4px; display: flex; justify-content: space-between; }
 .quick-ref span.ref-id { font-weight: bold; color: #007bff; }
