@@ -6,6 +6,11 @@ const port = process.env.PORT || 3000;
 
 app.use(express.static('public'));
 
+// --- CONFIGURATION ---
+// To switch to NBA later, just change this to "nba"
+const LEAGUE = "mens-college-basketball"; 
+// const LEAGUE = "nba"; 
+
 // --- LOAD DATABASE ---
 const dataPath = path.join(__dirname, 'public', 'data.json');
 let TAKE_ID_DB = [];
@@ -14,8 +19,7 @@ try {
     const rawData = fs.readFileSync(dataPath);
     const json = JSON.parse(rawData);
     
-    // Pre-process: Create a "required" list for each item to make matching faster
-    // This logic mimics what we did in Python
+    // Pre-process: Create "required" list for fast matching
     TAKE_ID_DB = json.map(item => {
         const parts = item.category.split('/').map(s => s.trim());
         const validKeys = ["PTS", "REBS", "ASSTS", "BLKS", "STLS", "FOULS", "FG", "FT", "3-PT FG", "TO", "MINS", "OFF REBS", "FGS", "TECHNICAL", "EJECTED", "BIO"];
@@ -27,7 +31,7 @@ try {
     console.error("Error loading data.json:", err);
 }
 
-// --- THRESHOLDS (Matches your Python script) ---
+// --- THRESHOLDS ---
 const THRESHOLDS = {
     "PTS": 8, "REBS": 5, "ASSTS": 4, 
     "BLKS": 2, "STLS": 2, "3-PT FG": 3, 
@@ -39,7 +43,7 @@ function findStatIndex(names, target) {
     return names.indexOf(target);
 }
 
-function getBestMatch(playerStats) {
+function getTopMatches(playerStats) {
     // 1. Identify Notable Stats
     const notable = new Set();
     for (const [key, val] of Object.entries(playerStats)) {
@@ -52,29 +56,48 @@ function getBestMatch(playerStats) {
     TAKE_ID_DB.forEach(item => {
         if (!item.required || item.required.length === 0) return;
         
-        // Check if player has ALL required stats for this category
+        // Check if player has ALL required stats
         const hasAll = item.required.every(req => notable.has(req));
         
         if (hasAll) {
             matches.push({
                 id: item.id,
                 category: item.category,
-                score: item.required.length // More specific matches = higher score
+                score: item.required.length // Priority to more specific matches
             });
         }
     });
 
-    // 3. Sort by Score (Desc)
+    // 3. Sort by Score (Desc) and take top 3
     matches.sort((a, b) => b.score - a.score);
-    return matches.length > 0 ? matches[0] : null;
+    return matches.slice(0, 3);
+}
+
+function getDynamicStatString(stats) {
+    // Returns a string of the most impressive stats, not just P/R/A
+    let parts = [];
+    // Always show points if significant
+    if (stats.PTS > 0) parts.push(`${stats.PTS}pts`);
+    
+    // Check other categories against thresholds or if they are non-zero
+    if (stats.REBS >= 3) parts.push(`${stats.REBS}reb`);
+    if (stats.ASSTS >= 3) parts.push(`${stats.ASSTS}ast`);
+    if (stats.BLKS >= 1) parts.push(`${stats.BLKS}blk`);
+    if (stats.STLS >= 1) parts.push(`${stats.STLS}stl`);
+    if (stats["3-PT FG"] >= 2) parts.push(`${stats["3-PT FG"]} 3pm`);
+    
+    // Fallback if low stats
+    if (parts.length === 1 && stats.REBS > 0) parts.push(`${stats.REBS}reb`);
+    
+    return parts.join(' ');
 }
 
 // --- API ENDPOINTS ---
 
-// 1. Get List of Live Games
 app.get('/api/games', async (req, res) => {
     try {
-        const response = await fetch('http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard');
+        const url = `http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/scoreboard`;
+        const response = await fetch(url);
         const data = await response.json();
         
         const games = data.events.map(event => ({
@@ -91,31 +114,26 @@ app.get('/api/games', async (req, res) => {
     }
 });
 
-// 2. Get Processed Stats for a Specific Game
 app.get('/api/game/:id', async (req, res) => {
     try {
         const gameId = req.params.id;
-        const url = `http://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=${gameId}`;
+        const url = `http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/summary?event=${gameId}`;
         const response = await fetch(url);
         const data = await response.json();
 
         const processedTeams = [];
-        
-        // ESPN Structure: boxscore -> players (list of teams)
         const playerGroups = data.boxscore?.players || [];
 
         for (const teamGroup of playerGroups) {
             const teamName = teamGroup.team.displayName;
-            const teamLogo = teamGroup.team.logo;
             const processedPlayers = [];
 
             const statsList = teamGroup.statistics || [];
             if (statsList.length > 0) {
                 const statsData = statsList[0];
-                const names = statsData.names; // ["MIN", "PTS", ...]
+                const names = statsData.names; 
                 const athletes = statsData.athletes;
 
-                // Index Map
                 const idx = {
                     PTS: findStatIndex(names, "PTS"),
                     REBS: findStatIndex(names, "REB"),
@@ -133,7 +151,6 @@ app.get('/api/game/:id', async (req, res) => {
                     const name = ath.athlete.displayName;
                     const raw = ath.stats;
 
-                    // Helper to safely get value
                     const getVal = (key) => {
                         const i = idx[key];
                         if (i === -1 || !raw[i]) return 0;
@@ -155,18 +172,21 @@ app.get('/api/game/:id', async (req, res) => {
                         MINS: getVal("MIN")
                     };
 
-                    const bestMatch = getBestMatch(pStats);
-
-                    if (bestMatch) {
+                    // Get top 3 matches instead of just 1
+                    const topMatches = getTopMatches(pStats);
+                    
+                    // Only include player if they have at least one valid category match
+                    // OR if they have significant stats (e.g. > 10 pts) even if no match found
+                    if (topMatches.length > 0 || pStats.PTS >= 10) {
                         processedPlayers.push({
                             name: name,
-                            statsSummary: `${pStats.PTS}pts ${pStats.REBS}reb ${pStats.ASSTS}ast`,
-                            match: bestMatch
+                            statsSummary: getDynamicStatString(pStats),
+                            matches: topMatches
                         });
                     }
                 }
             }
-            processedTeams.push({ team: teamName, logo: teamLogo, players: processedPlayers });
+            processedTeams.push({ team: teamName, players: processedPlayers });
         }
 
         res.json({ teams: processedTeams });
