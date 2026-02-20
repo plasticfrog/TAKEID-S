@@ -7,8 +7,8 @@ const port = process.env.PORT || 3000;
 app.use(express.static('public'));
 
 // --- CONFIGURATION ---
-const LEAGUE = "mens-college-basketball"; 
-// const LEAGUE = "nba"; 
+// Switched to NBA
+const LEAGUE = "nba"; 
 
 // --- LOAD DATABASE ---
 const dataPath = path.join(__dirname, 'public', 'data.json');
