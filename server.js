@@ -349,9 +349,13 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
             descParts.push(`${fmt(st, val)} ${st.toLowerCase()}`);
         }
 
+        // Save the raw base score BEFORE any bonuses — this is the "are these stats actually good?" check
+        const baseScore = score;
+
         // --- DEVIATION BONUS for L5/Last Game/Career (compared to season) ---
         // Season categories get NO comparison bonus — they're just fallback numbers
-        if (cat.group !== "Season" && cat.group !== "Bio" && cat.group !== "Last vs Opp") {
+        // Only apply deviation bonus if the base stats are already at least somewhat notable
+        if (cat.group !== "Season" && cat.group !== "Bio" && cat.group !== "Last vs Opp" && baseScore >= 2) {
             let devBonus = 0;
             for (const st of cat.stats) {
                 const srcVal = v(source, st);
@@ -377,23 +381,29 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
             }
         }
 
-        // --- SPECIAL: Last vs Opp gets a big boost (always interesting if available) ---
+        // --- SPECIAL: Last vs Opp — only show if the stat line is actually impressive ---
         if (cat.group === "Last vs Opp" && lastVsOpp) {
-            score += 3;
-            if (lastVsOpp._opponent) {
+            if (baseScore >= 3) { // Need genuinely good stats (e.g. 15+ pts, or 10+ reb with other stats)
+                score += 3;
+            } else {
+                score = 0; // Kill weak lines — "6 pts 0 ast" vs opponent isn't worth a graphic
+            }
+            if (score > 0 && lastVsOpp._opponent) {
                 descParts.push(`(vs ${lastVsOpp._opponent})`);
             }
         }
 
-        // --- SPECIAL: Last Game with standout performance ---
+        // --- SPECIAL: Last Game — only show if it was a standout performance ---
         if (cat.group === "Last Game") {
             const pts = v(lastGame, 'PTS');
             const reb = v(lastGame, 'REB');
             const ast = v(lastGame, 'AST');
-            if (pts >= 30) score += 3;
-            else if (pts >= 25) score += 2;
-            if (reb >= 10 || ast >= 10) score += 1; // double-double/triple-double potential
-            if (lastGame._opponent) {
+            if (pts >= 25) score += 3;
+            else if (pts >= 20) score += 2;
+            else if (pts >= 15 && (reb >= 7 || ast >= 7)) score += 2;
+            else if (baseScore < 3) score = 0; // Kill weak last game lines — need real stats to show
+            if (reb >= 10 || ast >= 10) score += 1;
+            if (score > 0 && lastGame._opponent) {
                 descParts.push(`(vs ${lastGame._opponent})`);
             }
         }
