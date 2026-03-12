@@ -290,21 +290,27 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
     if (!season) return [];
 
     // How impressive a stat value is (used for base scoring)
+    // Percentage stats score LOWER — they're easy for everyone to hit and
+    // shouldn't dominate category selection. Counting stats (pts/reb/ast) are
+    // what make a graphic interesting.
     const impressive = {
         PTS: [{ min: 25, s: 3 }, { min: 18, s: 2 }, { min: 12, s: 1 }],
         REB: [{ min: 10, s: 3 }, { min: 7, s: 2 }, { min: 5, s: 1 }],
         AST: [{ min: 8, s: 3 }, { min: 5, s: 2 }, { min: 3, s: 1 }],
         STL: [{ min: 2, s: 3 }, { min: 1.3, s: 2 }, { min: 0.8, s: 1 }],
         BLK: [{ min: 2, s: 3 }, { min: 1.2, s: 2 }, { min: 0.7, s: 1 }],
-        "FG%": [{ min: 52, s: 3 }, { min: 47, s: 2 }, { min: 43, s: 1 }],
-        "3P%": [{ min: 40, s: 3 }, { min: 36, s: 2 }, { min: 33, s: 1 }],
-        "FT%": [{ min: 88, s: 3 }, { min: 80, s: 2 }, { min: 72, s: 1 }],
+        "FG%": [{ min: 55, s: 2 }, { min: 50, s: 1 }],
+        "3P%": [{ min: 42, s: 2 }, { min: 38, s: 1 }],
+        "FT%": [{ min: 90, s: 2 }, { min: 85, s: 1 }],
         MIN: [{ min: 34, s: 2 }, { min: 28, s: 1 }],
         TO: [{ min: 0, s: 0 }],
         FG: [{ min: 10, s: 3 }, { min: 7, s: 2 }, { min: 4, s: 1 }],
         "3PT": [{ min: 4, s: 3 }, { min: 3, s: 2 }, { min: 2, s: 1 }],
         FT: [{ min: 8, s: 3 }, { min: 5, s: 2 }, { min: 3, s: 1 }],
     };
+
+    // Stats that are percentages — categories with ONLY these are less useful
+    const PCT_STATS = new Set(["FG%", "3P%", "FT%"]);
 
     function statScore(statName, value) {
         const tiers = impressive[statName];
@@ -347,6 +353,13 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
             const val = v(source, st);
             score += statScore(st, val);
             descParts.push(`${fmt(st, val)} ${st.toLowerCase()}`);
+        }
+
+        // Penalize categories where ALL stats are percentages (e.g. fg%/ft%/3-pt%)
+        // These are boring — most players hit decent percentages. Prefer pts/reb/ast.
+        const countingStats = cat.stats.filter(s => !PCT_STATS.has(s));
+        if (countingStats.length === 0 && cat.stats.length > 0) {
+            score = Math.floor(score * 0.3); // Heavy penalty — percentage-only categories rarely interesting
         }
 
         // Save the raw base score BEFORE any bonuses — this is the "are these stats actually good?" check
@@ -435,6 +448,10 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
 
         // Season categories keep their natural score — no artificial penalty.
         // They'll only appear when higher-priority groups don't meet the quality bar.
+        // Boost pts/reb/ast Season category slightly so it's the default fallback
+        if (cat.group === "Season" && cat.suffix === "00") {
+            score += 0.5;
+        }
 
         if (score > 0) {
             scored.push({
@@ -468,45 +485,39 @@ function pickBestCategories(scoredCategories) {
     const picked = [];
     const usedGroups = new Set();
 
-    // First pass: pick the best from each high-priority group, BUT only if the score
-    // meets a quality bar. Weak stat lines from L5/Last Game/Career should NOT
-    // beat a clean Season average for bench players.
-    const MIN_QUALITY = 3; // Need score >= 3 to justify a non-Season category
+    // Only pick non-Season/non-Bio categories if the stats are genuinely impressive.
+    // Bench players with weak numbers should just show Season averages + Bio.
+    const MIN_QUALITY = 4; // Must have genuinely strong stats to justify L5/LastGame/Career/vsOpp
+
+    // First pass: pick impressive non-Season categories (one per group, highest score first)
     for (const cat of scoredCategories) {
         if (picked.length >= 3) break;
-        if (cat.group === "Bio") continue;
-        if (cat.group !== "Season" && cat.score < MIN_QUALITY) continue; // Skip weak non-Season lines
+        if (cat.group === "Bio" || cat.group === "Season") continue;
+        if (cat.score < MIN_QUALITY) continue;
         if (!usedGroups.has(cat.group)) {
             picked.push(cat);
             usedGroups.add(cat.group);
         }
     }
 
-    // Second pass: fill remaining slots — prefer highest score regardless of group,
-    // but still require MIN_QUALITY for non-Season categories
+    // Second pass: fill with more impressive non-Season (allow same group)
     for (const cat of scoredCategories) {
         if (picked.length >= 3) break;
         if (picked.includes(cat)) continue;
-        if (cat.group === "Bio") continue;
-        if (cat.group !== "Season" && cat.score < MIN_QUALITY) continue;
+        if (cat.group === "Bio" || cat.group === "Season") continue;
+        if (cat.score < MIN_QUALITY) continue;
         picked.push(cat);
     }
 
-    // Third pass: if still not full, allow Season categories by score
-    if (picked.length < 3) {
-        for (const cat of scoredCategories) {
-            if (picked.length >= 3) break;
-            if (picked.includes(cat)) continue;
-            if (cat.group !== "Season") continue;
-            picked.push(cat);
-        }
+    // Third pass: fill remaining with best Season categories (always available)
+    for (const cat of scoredCategories) {
+        if (picked.length >= 3) break;
+        if (picked.includes(cat)) continue;
+        if (cat.group !== "Season") continue;
+        picked.push(cat);
     }
 
-    // If still under 2, add Season fallback then Bio
-    if (picked.length < 2) {
-        const seasonBest = scoredCategories.find(c => c.group === "Season" && !picked.includes(c));
-        if (seasonBest) picked.push(seasonBest);
-    }
+    // Fallback: if still under 2, add Bio
     if (picked.length < 2) {
         const bio = scoredCategories.find(c => c.group === "Bio" && !picked.includes(c));
         if (bio) picked.push(bio);
