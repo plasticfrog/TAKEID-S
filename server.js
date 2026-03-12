@@ -77,6 +77,7 @@ function generatePregameStorylines(player, isHome) {
     if (jerseyStr.length === 1) jerseyStr = "0" + jerseyStr; 
     const prefix = `${teamPrefix}00${jerseyStr}`; 
 
+    // --- MOCK HISTORICAL DATA ENGINE ---
     const archetypes = ['scorer', 'playmaker', 'bigman', 'shooter'];
     const type = archetypes[Math.floor(Math.random() * archetypes.length)];
 
@@ -148,6 +149,7 @@ function generatePregameStorylines(player, isHome) {
 
 // --- API ENDPOINTS ---
 
+// Fetch 30 Teams for Pregame Dropdowns
 app.get('/api/teams', async (req, res) => {
     try {
         const response = await fetch(`http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/teams?limit=30`);
@@ -158,6 +160,7 @@ app.get('/api/teams', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Failed to fetch teams" }); }
 });
 
+// Fetch Live Scoreboard
 app.get('/api/games', async (req, res) => {
     try {
         const response = await fetch(`http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/scoreboard`);
@@ -240,7 +243,6 @@ app.get('/api/game/:id', async (req, res) => {
             const processedPlayers = [];
             const statsList = teamGroup.statistics || [];
             
-            // FIX: Safely find the actual player stats block, ignoring team stats
             let statsData = null;
             for (const group of statsList) {
                 if (group.names && group.athletes) {
@@ -274,7 +276,6 @@ app.get('/api/game/:id', async (req, res) => {
                     if (isNaN(jNum)) jNum = 0; 
                     const playerCode = (isHome ? 200 : 100) + jNum;
 
-                    // FIX: Force raw values to Strings to prevent crashes on numbers
                     const getVal = (key) => { 
                         const i = idx[key]; 
                         if (i === -1 || raw[i] == null) return 0; 
@@ -301,6 +302,7 @@ app.get('/api/game/:id', async (req, res) => {
                     };
                     
                     const displayStats = { ...pStats, "FG": getStr("FG"), "FT": getStr("FT"), "3-PT FG": getStr("3-PT FG") };
+                    
                     const topMatches = getTopMatches(pStats);
                     
                     if (topMatches.length > 0 || pStats.PTS >= 10) {
