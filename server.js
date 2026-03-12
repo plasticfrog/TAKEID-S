@@ -7,7 +7,6 @@ const port = process.env.PORT || 3000;
 app.use(express.static('public'));
 
 // --- CONFIGURATION ---
-// Switched to NBA
 const LEAGUE = "nba"; 
 
 // --- LOAD DATABASE ---
@@ -52,7 +51,6 @@ function getTopMatches(playerStats) {
     TAKE_ID_DB.forEach(item => {
         if (!item.required || item.required.length === 0) return;
         
-        // FILTER: Ignore Time-Based categories for now since we only have Game Totals
         const catUpper = item.category.toUpperCase();
         if (catUpper.includes("QTR") || catUpper.includes("HALF") || catUpper.includes("SINCE") || catUpper.includes("SEASON")) {
             return;
@@ -74,7 +72,6 @@ function getTopMatches(playerStats) {
 }
 
 function getDynamicStatString(stats, topMatches) {
-    // Collect ALL required stats from ALL top matches
     const statsToShow = new Set();
     
     if (topMatches && topMatches.length > 0) {
@@ -85,10 +82,8 @@ function getDynamicStatString(stats, topMatches) {
         });
     }
 
-    // Always show PTS if they scored, even if not in a category
     if (stats.PTS > 0) statsToShow.add("PTS");
 
-    // Convert Set to Array and Sort (PTS first, then REB/AST)
     const sortedKeys = Array.from(statsToShow).sort((a, b) => {
         const order = ["PTS", "REBS", "ASSTS", "FG", "3-PT FG", "FT", "BLKS", "STLS"];
         return order.indexOf(a) - order.indexOf(b);
@@ -97,7 +92,6 @@ function getDynamicStatString(stats, topMatches) {
     const parts = [];
     sortedKeys.forEach(key => {
         let val = stats[key];
-        // Skip if 0 (unless it's points or explicitly required)
         if (val == 0 && key !== "PTS") return;
 
         let label = key.toLowerCase();
@@ -142,9 +136,23 @@ app.get('/api/game/:id', async (req, res) => {
         const response = await fetch(url);
         const data = await response.json();
 
-        const competitors = data.header?.competitions?.[0]?.competitors || [];
-        const homeTeamId = competitors.find(c => c.homeAway === 'home')?.id;
+        const competition = data.header?.competitions?.[0];
+        const competitors = competition?.competitors || [];
+        
+        // --- GRAB LIVE GAME SCORE & CLOCK ---
+        const statusDetail = competition?.status?.type?.shortDetail || "Unknown Status";
+        const homeTeamObj = competitors.find(c => c.homeAway === 'home');
+        const awayTeamObj = competitors.find(c => c.homeAway === 'away');
+        
+        const gameInfo = {
+            status: statusDetail,
+            homeScore: homeTeamObj?.score || "0",
+            awayScore: awayTeamObj?.score || "0",
+            homeAbbrev: homeTeamObj?.team?.abbreviation || "HOME",
+            awayAbbrev: awayTeamObj?.team?.abbreviation || "AWAY"
+        };
 
+        const homeTeamId = homeTeamObj?.id;
         const processedTeams = [];
         const playerGroups = data.boxscore?.players || [];
 
@@ -179,6 +187,11 @@ app.get('/api/game/:id', async (req, res) => {
                     const name = ath.athlete.displayName;
                     const jersey = ath.athlete.jersey || "00";
                     const raw = ath.stats;
+
+                    // --- CALCULATE PLAYER CODE ---
+                    let jNum = parseInt(jersey);
+                    if (isNaN(jNum)) jNum = 0; // Handle missing or weird jerseys
+                    const playerCode = (isHome ? 200 : 100) + jNum;
 
                     const getVal = (key) => {
                         const i = idx[key];
@@ -219,7 +232,7 @@ app.get('/api/game/:id', async (req, res) => {
                         processedPlayers.push({
                             name: name,
                             jersey: jersey,
-                            // Pass ALL top matches so we can show ALL relevant stats
+                            playerCode: playerCode, // Send the code to the frontend
                             statsSummary: getDynamicStatString(displayStats, topMatches),
                             matches: topMatches
                         });
@@ -234,7 +247,8 @@ app.get('/api/game/:id', async (req, res) => {
             });
         }
 
-        res.json({ teams: processedTeams });
+        // Return gameInfo along with the teams
+        res.json({ gameInfo: gameInfo, teams: processedTeams });
 
     } catch (error) {
         console.error("Error processing game:", error);
