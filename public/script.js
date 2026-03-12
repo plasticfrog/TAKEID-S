@@ -65,7 +65,6 @@ async function updateTracker(gameId) {
         statusText.textContent = `Updating...`;
         const res = await fetch(`/api/game/${gameId}`);
         const data = await res.json();
-        // Pass the full data object now, not just teams
         renderTracker(data);
         statusText.textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
     } catch (err) { statusText.textContent = "Error fetching data."; }
@@ -112,7 +111,6 @@ function renderTracker(data) {
                 ? p.matches.map(m => `<div class="match-badge"><span class="match-cat">${m.category}</span><span class="match-id">${m.id}</span></div>`).join('')
                 : '<span class="no-match">-</span>';
 
-            // Added Player Code right under the name
             row.innerHTML = `
                 <td class="player-name">
                     <div><span class="jersey">#${p.jersey}</span> ${p.name}</div>
