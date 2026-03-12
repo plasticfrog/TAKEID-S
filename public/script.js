@@ -52,7 +52,7 @@ document.getElementById('pregameBtn').addEventListener('click', async () => {
     const homeId = homeSelect.value;
     if (!awayId || !homeId) return alert("Select both an Away and Home team!");
     
-    pregameStatus.textContent = "Scanning rosters for historical anomalies...";
+    pregameStatus.textContent = "Fetching real player stats from ESPN (this may take 10-15 seconds)...";
     pregameResults.innerHTML = '';
     
     try {
