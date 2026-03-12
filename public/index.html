@@ -10,9 +10,7 @@
 
     <div class="quick-ref">
         <h3>Common Codes</h3>
-        <ul>
-            <li><span>PTS / REB / ASST</span><span class="ref-id">5111</span></li>
-        </ul>
+        <ul><li><span>PTS / REB / ASST</span><span class="ref-id">5111</span></li></ul>
     </div>
 
     <div class="container">
@@ -32,26 +30,22 @@
         </div>
 
         <div id="pregame-view" class="view-section" style="display: none;">
-            <div class="tracker-controls">
-                <select id="pregameSelect">
-                    <option value="">Loading matchups...</option>
-                </select>
-                <button id="pregameBtn">Generate Storylines</button>
+            <div class="tracker-controls matchup-controls">
+                <select id="awayTeamSelect"><option value="">Away Team...</option></select>
+                <span style="font-weight: bold; padding-top: 5px;">@</span>
+                <select id="homeTeamSelect"><option value="">Home Team...</option></select>
+                <button id="pregameBtn">Generate</button>
             </div>
-            <div id="pregameStatus" class="status-text">Select a matchup to scan for anomalies...</div>
-            
+            <div id="pregameStatus" class="status-text">Build a matchup to scan for anomalies...</div>
             <div id="pregameResults"></div>
         </div>
 
         <div id="tracker-view" class="view-section" style="display: none;">
             <div class="tracker-controls">
-                <select id="gameSelect">
-                    <option value="">Loading games...</option>
-                </select>
+                <select id="gameSelect"><option value="">Loading games...</option></select>
                 <button id="refreshBtn">↻</button>
             </div>
             <div id="statusText" class="status-text">Select a game to start tracking...</div>
-            
             <div id="trackerResults"></div>
         </div>
 
