@@ -107,20 +107,10 @@ function getDynamicStatString(stats, topMatches) {
     return parts.join(', ');
 }
 
-// --- PREGAME: CATEGORY TEMPLATES (from Take ID reference sheet) ---
+// --- PREGAME: CATEGORY TEMPLATES (full reference sheet) ---
+// Priority groups: higher-priority groups get picked first, Season is fallback
 const PREGAME_CATEGORIES = [
-    // Season Averages (00-09)
-    { suffix: "00", group: "Season", title: "Season - pts/rbs/ast", stats: ["PTS","REB","AST"] },
-    { suffix: "01", group: "Season", title: "Season - pts/rbs/fg%", stats: ["PTS","REB","FG%"] },
-    { suffix: "02", group: "Season", title: "Season - pts/ast/stl", stats: ["PTS","AST","STL"] },
-    { suffix: "03", group: "Season", title: "Season - fg%/ft%/3-pt%", stats: ["FG%","FT%","3P%"] },
-    { suffix: "04", group: "Season", title: "Season - min/pts/rbs", stats: ["MIN","PTS","REB"] },
-    { suffix: "05", group: "Season", title: "Season - min/pts/ast", stats: ["MIN","PTS","AST"] },
-    { suffix: "06", group: "Season", title: "Season - pts/fg%/ft%", stats: ["PTS","FG%","FT%"] },
-    { suffix: "07", group: "Season", title: "Season - pts/ast/fg%", stats: ["PTS","AST","FG%"] },
-    { suffix: "08", group: "Season", title: "Season - ast/stl/to", stats: ["AST","STL","TO"] },
-    { suffix: "09", group: "Season", title: "Season - pts/fg%/3pt%", stats: ["PTS","FG%","3P%"] },
-    // Last 5 Games (20-29)
+    // Last 5 Games (20-29) — HIGH PRIORITY (recent trends)
     { suffix: "20", group: "Last 5", title: "Last 5 Games - pts/rbs/ast", stats: ["PTS","REB","AST"] },
     { suffix: "21", group: "Last 5", title: "Last 5 Games - pts/rbs/fg%", stats: ["PTS","REB","FG%"] },
     { suffix: "22", group: "Last 5", title: "Last 5 Games - pts/ast/stl", stats: ["PTS","AST","STL"] },
@@ -131,11 +121,20 @@ const PREGAME_CATEGORIES = [
     { suffix: "27", group: "Last 5", title: "Last 5 Games - pts/ast/fg%", stats: ["PTS","AST","FG%"] },
     { suffix: "28", group: "Last 5", title: "Last 5 Games - ast/stl/to", stats: ["AST","STL","TO"] },
     { suffix: "29", group: "Last 5", title: "Last 5 Games - pts/fg%/3pt%", stats: ["PTS","FG%","3P%"] },
-    // Last Game (50-54)
+    // Last Game (x00__50-54) — HIGH PRIORITY (standout performances)
     { suffix: "50", group: "Last Game", title: "Last Game - pts/reb/ast/min", stats: ["PTS","REB","AST","MIN"] },
     { suffix: "51", group: "Last Game", title: "Last Game - pts/fgm-fga/reb/min", stats: ["PTS","FG","REB","MIN"] },
     { suffix: "52", group: "Last Game", title: "Last Game - pts/fgm-fga/ast/min", stats: ["PTS","FG","AST","MIN"] },
-    // Career Averages (80-89)
+    { suffix: "53", group: "Last Game", title: "Last Game - fgm-fga/ftm-fta/pts", stats: ["FG","FT","PTS"] },
+    { suffix: "54", group: "Last Game", title: "Last Game - fgm-fga/3ptm-3pta/pts", stats: ["FG","3PT","PTS"] },
+    // Additional Last Game (x01__50-59)
+    { suffix: "1_50", group: "Last Game", title: "Last Game - pts/reb/ast", stats: ["PTS","REB","AST"] },
+    { suffix: "1_51", group: "Last Game", title: "Last Game - pts/reb/fgm-fga", stats: ["PTS","REB","FG"] },
+    { suffix: "1_52", group: "Last Game", title: "Last Game - pts/ast/stl", stats: ["PTS","AST","STL"] },
+    { suffix: "1_55", group: "Last Game", title: "Last Game - min/pts/ast", stats: ["MIN","PTS","AST"] },
+    { suffix: "1_56", group: "Last Game", title: "Last Game - pts/ast/fgm-fga", stats: ["PTS","AST","FG"] },
+    { suffix: "1_57", group: "Last Game", title: "Last Game - pts/ast/to", stats: ["PTS","AST","TO"] },
+    // Career Averages (80-89) — MEDIUM PRIORITY (notable career numbers)
     { suffix: "80", group: "Career", title: "Career - pts/rbs/ast", stats: ["PTS","REB","AST"] },
     { suffix: "81", group: "Career", title: "Career - pts/rbs/fg%", stats: ["PTS","REB","FG%"] },
     { suffix: "82", group: "Career", title: "Career - pts/ast/stl", stats: ["PTS","AST","STL"] },
@@ -146,8 +145,38 @@ const PREGAME_CATEGORIES = [
     { suffix: "87", group: "Career", title: "Career - pts/ast/fg%", stats: ["PTS","AST","FG%"] },
     { suffix: "88", group: "Career", title: "Career - ast/stl/to", stats: ["AST","STL","TO"] },
     { suffix: "89", group: "Career", title: "Career - pts/fg%/3pt%", stats: ["PTS","FG%","3P%"] },
-    // Bio
+    // Last Game vs Opponent (x00__55-59) — HIGH PRIORITY if data available
+    { suffix: "55", group: "Last vs Opp", title: "Last Game vs. Opp - pts/reb/ast/min", stats: ["PTS","REB","AST","MIN"] },
+    { suffix: "56", group: "Last vs Opp", title: "Last Game vs. Opp - pts/fgm-fga/reb/min", stats: ["PTS","FG","REB","MIN"] },
+    { suffix: "57", group: "Last vs Opp", title: "Last Game vs. Opp - pts/fgm-fga/ast/smin", stats: ["PTS","FG","AST","MIN"] },
+    { suffix: "58", group: "Last vs Opp", title: "Last Game vs. Opp - fgm-fga/ftm-fta/pts", stats: ["FG","FT","PTS"] },
+    { suffix: "59", group: "Last vs Opp", title: "Last Game vs. Opp - fgm-fga/3ptm-3pta/pts", stats: ["FG","3PT","PTS"] },
+    // Bio (77-79)
     { suffix: "77", group: "Bio", title: "Bio - Age/Ht/Wt/College/Years Pro", stats: [] },
+    { suffix: "78", group: "Bio", title: "Draft - Team/Year/Round/College/Pick", stats: [] },
+    { suffix: "79", group: "Bio", title: "Experience - NBA Exp/Team Exp", stats: [] },
+    // Season Averages (00-09) — LOWEST PRIORITY (fallback only)
+    { suffix: "00", group: "Season", title: "Season - pts/rbs/ast", stats: ["PTS","REB","AST"] },
+    { suffix: "01", group: "Season", title: "Season - pts/rbs/fg%", stats: ["PTS","REB","FG%"] },
+    { suffix: "02", group: "Season", title: "Season - pts/ast/stl", stats: ["PTS","AST","STL"] },
+    { suffix: "03", group: "Season", title: "Season - fg%/ft%/3-pt%", stats: ["FG%","FT%","3P%"] },
+    { suffix: "04", group: "Season", title: "Season - min/pts/rbs", stats: ["MIN","PTS","REB"] },
+    { suffix: "05", group: "Season", title: "Season - min/pts/ast", stats: ["MIN","PTS","AST"] },
+    { suffix: "06", group: "Season", title: "Season - pts/fg%/ft%", stats: ["PTS","FG%","FT%"] },
+    { suffix: "07", group: "Season", title: "Season - pts/ast/fg%", stats: ["PTS","AST","FG%"] },
+    { suffix: "08", group: "Season", title: "Season - ast/stl/to", stats: ["AST","STL","TO"] },
+    { suffix: "09", group: "Season", title: "Season - pts/fg%/3pt%", stats: ["PTS","FG%","3P%"] },
+    // Additional Season Averages (x01__00-09)
+    { suffix: "1_00", group: "Season", title: "Season - pts/ast/reb", stats: ["PTS","AST","REB"] },
+    { suffix: "1_01", group: "Season", title: "Season - pts/ast/to", stats: ["PTS","AST","TO"] },
+    { suffix: "1_02", group: "Season", title: "Season - pts/reb/blk", stats: ["PTS","REB","BLK"] },
+    { suffix: "1_03", group: "Season", title: "Season - min/pts/fg%", stats: ["MIN","PTS","FG%"] },
+    { suffix: "1_04", group: "Season", title: "Season - min/pts/to", stats: ["MIN","PTS","TO"] },
+    { suffix: "1_05", group: "Season", title: "Season - pts/reb/to", stats: ["PTS","REB","TO"] },
+    { suffix: "1_06", group: "Season", title: "Season - pts/reb/3pt%", stats: ["PTS","REB","3P%"] },
+    { suffix: "1_07", group: "Season", title: "Season - pts/ast/3pt%", stats: ["PTS","AST","3P%"] },
+    { suffix: "1_08", group: "Season", title: "Season - pts/reb/ft%", stats: ["PTS","REB","FT%"] },
+    { suffix: "1_09", group: "Season", title: "Season - pts/ast/ft%", stats: ["PTS","AST","FT%"] },
 ];
 
 // --- PREGAME: FETCH REAL PLAYER DATA FROM ESPN ---
@@ -167,7 +196,6 @@ async function fetchPlayerStats(athleteId) {
 }
 
 function parseSeasonAndCareer(statsData) {
-    // ESPN stats endpoint: categories[0] = averages with labels & statistics array
     const avgCat = (statsData.categories || []).find(c => c.name === 'averages');
     if (!avgCat) return { season: null, career: null };
 
@@ -179,50 +207,44 @@ function parseSeasonAndCareer(statsData) {
         const obj = {};
         labels.forEach((label, i) => {
             let val = row[i];
-            if (typeof val === 'string' && val.includes('-')) val = val.split('-')[0]; // "7.9-18.9" → "7.9"
+            if (typeof val === 'string' && val.includes('-')) val = val.split('-')[0];
             obj[label] = parseFloat(val) || 0;
         });
         return obj;
     };
 
-    // Current season = last entry in statistics array
     const currentSeason = seasons.length > 0 ? mapRow(seasons[seasons.length - 1].stats) : null;
     const career = careerRaw.length > 0 ? mapRow(careerRaw) : null;
 
     return { season: currentSeason, career };
 }
 
-function parseLast5AndLastGame(logData) {
-    // Gamelog: seasonTypes[0].categories[] = months, each with events[]
-    // events at top level = metadata keyed by eventId
+function parseLast5AndLastGame(logData, opponentAbbrev) {
     const seasonType = (logData.seasonTypes || [])[0];
-    if (!seasonType) return { last5: null, lastGame: null };
+    if (!seasonType) return { last5: null, lastGame: null, lastVsOpp: null };
 
-    const labels = logData.labels || []; // ['MIN','FG','FG%','3PT','3P%','FT','FT%','REB','AST','BLK','STL','PF','TO','PTS']
+    const labels = logData.labels || [];
 
-    // Collect all games in order (months are reverse chronological, events within month are too)
+    // Collect all games in order (months are reverse chronological)
     const allGames = [];
     for (const month of (seasonType.categories || [])) {
         for (const ev of (month.events || [])) {
             allGames.push(ev);
         }
     }
-
-    if (allGames.length === 0) return { last5: null, lastGame: null };
+    if (allGames.length === 0) return { last5: null, lastGame: null, lastVsOpp: null };
 
     const mapGame = (ev) => {
         const obj = {};
         labels.forEach((label, i) => {
             let val = ev.stats[i];
             if (label === 'FG' || label === '3PT' || label === 'FT') {
-                // Keep as string for display (e.g., "7-11") but also parse made count
                 obj[label + '_STR'] = val;
                 obj[label] = parseFloat((val || '0').split('-')[0]) || 0;
             } else {
                 obj[label] = parseFloat(val) || 0;
             }
         });
-        // Add metadata from events object
         const meta = (logData.events || {})[ev.eventId];
         if (meta) {
             obj._opponent = meta.opponent?.abbreviation || '?';
@@ -232,8 +254,15 @@ function parseLast5AndLastGame(logData) {
         return obj;
     };
 
-    const lastGame = mapGame(allGames[0]);
-    const last5Raw = allGames.slice(0, 5).map(mapGame);
+    const mappedGames = allGames.map(mapGame);
+    const lastGame = mappedGames[0];
+    const last5Raw = mappedGames.slice(0, 5);
+
+    // Find last game vs this specific opponent
+    let lastVsOpp = null;
+    if (opponentAbbrev) {
+        lastVsOpp = mappedGames.find(g => g._opponent === opponentAbbrev) || null;
+    }
 
     // Average the last 5
     const last5 = {};
@@ -242,11 +271,9 @@ function parseLast5AndLastGame(logData) {
         numericKeys.forEach(key => {
             last5[key] = parseFloat((last5Raw.reduce((s, g) => s + g[key], 0) / last5Raw.length).toFixed(1));
         });
-        // For FG/3PT/FT, average the made counts
         ['FG','3PT','FT'].forEach(key => {
             last5[key] = parseFloat((last5Raw.reduce((s, g) => s + g[key], 0) / last5Raw.length).toFixed(1));
         });
-        // Also compute shooting %s for L5
         ['FG','3PT','FT'].forEach(key => {
             const pctLabel = key === 'FG' ? 'FG%' : key === '3PT' ? '3P%' : 'FT%';
             const totalMade = last5Raw.reduce((s, g) => s + parseFloat((g[key + '_STR'] || '0').split('-')[0] || 0), 0);
@@ -255,14 +282,14 @@ function parseLast5AndLastGame(logData) {
         });
     }
 
-    return { last5, lastGame, last5Raw };
+    return { last5, lastGame, lastVsOpp, last5Raw };
 }
 
 // --- PREGAME: SCORE CATEGORIES FOR A PLAYER ---
-function scoreCategories(season, career, last5, lastGame, prefix) {
+function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
     if (!season) return [];
 
-    // Thresholds for "impressive" stats (above these = the stat is worth highlighting)
+    // How impressive a stat value is (used for base scoring)
     const impressive = {
         PTS: [{ min: 25, s: 3 }, { min: 18, s: 2 }, { min: 12, s: 1 }],
         REB: [{ min: 10, s: 3 }, { min: 7, s: 2 }, { min: 5, s: 1 }],
@@ -273,7 +300,10 @@ function scoreCategories(season, career, last5, lastGame, prefix) {
         "3P%": [{ min: 40, s: 3 }, { min: 36, s: 2 }, { min: 33, s: 1 }],
         "FT%": [{ min: 88, s: 3 }, { min: 80, s: 2 }, { min: 72, s: 1 }],
         MIN: [{ min: 34, s: 2 }, { min: 28, s: 1 }],
-        TO: [{ min: 0, s: 0 }] // Turnovers: only interesting in combo with AST
+        TO: [{ min: 0, s: 0 }],
+        FG: [{ min: 10, s: 3 }, { min: 7, s: 2 }, { min: 4, s: 1 }],
+        "3PT": [{ min: 4, s: 3 }, { min: 3, s: 2 }, { min: 2, s: 1 }],
+        FT: [{ min: 8, s: 3 }, { min: 5, s: 2 }, { min: 3, s: 1 }],
     };
 
     function statScore(statName, value) {
@@ -283,12 +313,9 @@ function scoreCategories(season, career, last5, lastGame, prefix) {
         return 0;
     }
 
-    function getStatVal(source, statName) {
-        if (!source) return 0;
-        return source[statName] || 0;
-    }
+    function v(source, statName) { return (source && source[statName]) || 0; }
 
-    function fmtStat(statName, value) {
+    function fmt(statName, value) {
         if (statName.includes('%')) return `${value}%`;
         return `${value}`;
     }
@@ -296,83 +323,114 @@ function scoreCategories(season, career, last5, lastGame, prefix) {
     const scored = [];
 
     for (const cat of PREGAME_CATEGORIES) {
-        // Bio always gets a base score
-        if (cat.suffix === "77") {
-            scored.push({ ...cat, score: 0.5, code: `${prefix}${cat.suffix}`, desc: "Age/Ht/Wt/College/Years Pro" });
+        // Bio categories always available as fallback
+        if (cat.group === "Bio") {
+            scored.push({ ...cat, score: 0.5, code: `${prefix}${cat.suffix}`, desc: cat.title.split(' - ')[1] || cat.title });
             continue;
         }
 
-        let source, comparisonSource, compLabel;
-        if (cat.group === "Season") {
-            source = season;
-        } else if (cat.group === "Last 5") {
-            source = last5;
-            comparisonSource = season;
-            compLabel = "Season";
-        } else if (cat.group === "Last Game") {
-            source = lastGame;
-            comparisonSource = season;
-            compLabel = "Season Avg";
-        } else if (cat.group === "Career") {
-            source = career;
-            comparisonSource = season;
-            compLabel = "This Season";
-        }
+        // Determine data source for this group
+        let source;
+        if (cat.group === "Last 5") source = last5;
+        else if (cat.group === "Last Game") source = lastGame;
+        else if (cat.group === "Last vs Opp") source = lastVsOpp;
+        else if (cat.group === "Career") source = career;
+        else if (cat.group === "Season") source = season;
 
         if (!source) continue;
 
-        // Base score: sum of how impressive each stat in this category is
+        // --- BASE SCORE: how impressive are the raw stat values ---
         let score = 0;
         const descParts = [];
 
         for (const st of cat.stats) {
-            const val = getStatVal(source, st);
+            const val = v(source, st);
             score += statScore(st, val);
-            descParts.push(`${fmtStat(st, val)} ${st.toLowerCase()}`);
+            descParts.push(`${fmt(st, val)} ${st.toLowerCase()}`);
         }
 
-        // Bonus for anomalies/trends (L5 vs season, career vs season)
-        if (comparisonSource && cat.stats.length > 0) {
-            let deviationBonus = 0;
-            const compParts = [];
-
+        // --- DEVIATION BONUS for L5/Last Game/Career (compared to season) ---
+        // Season categories get NO comparison bonus — they're just fallback numbers
+        if (cat.group !== "Season" && cat.group !== "Bio" && cat.group !== "Last vs Opp") {
+            let devBonus = 0;
             for (const st of cat.stats) {
-                const srcVal = getStatVal(source, st);
-                const compVal = getStatVal(comparisonSource, st);
-                if (compVal === 0) continue;
+                const srcVal = v(source, st);
+                const seasonVal = v(season, st);
+                if (seasonVal === 0) continue;
 
-                let diff;
                 if (st.includes('%')) {
-                    diff = srcVal - compVal; // percentage point difference
-                    if (Math.abs(diff) >= 5) deviationBonus += 2;
-                    else if (Math.abs(diff) >= 3) deviationBonus += 1;
+                    const diff = Math.abs(srcVal - seasonVal);
+                    if (diff >= 5) devBonus += 2;
+                    else if (diff >= 3) devBonus += 1;
                 } else {
-                    diff = srcVal - compVal;
-                    const pctChange = Math.abs(diff / compVal);
-                    if (pctChange >= 0.25) deviationBonus += 2; // 25%+ change
-                    else if (pctChange >= 0.15) deviationBonus += 1; // 15%+ change
+                    const pctChange = Math.abs((srcVal - seasonVal) / seasonVal);
+                    if (pctChange >= 0.25) devBonus += 2;
+                    else if (pctChange >= 0.15) devBonus += 1;
                 }
-                compParts.push(`${fmtStat(st, compVal)} ${st.toLowerCase()}`);
             }
+            score += devBonus;
 
-            score += deviationBonus;
-
-            if (compParts.length > 0 && deviationBonus > 0) {
-                descParts.push(`(${compLabel}: ${compParts.join(', ')})`);
+            // Add season comparison in desc ONLY if there's a notable deviation
+            if (devBonus > 0) {
+                const compParts = cat.stats.map(st => `${fmt(st, v(season, st))} ${st.toLowerCase()}`);
+                descParts.push(`(Season: ${compParts.join(', ')})`);
             }
         }
 
-        // Special boost: ast/stl/to category (08/28/88) is interesting when AST/TO ratio is high
-        if (cat.suffix.endsWith('8') && cat.stats.includes('AST') && cat.stats.includes('TO')) {
-            const ast = getStatVal(source, 'AST');
-            const to = getStatVal(source, 'TO');
+        // --- SPECIAL: Last vs Opp gets a big boost (always interesting if available) ---
+        if (cat.group === "Last vs Opp" && lastVsOpp) {
+            score += 3;
+            if (lastVsOpp._opponent) {
+                descParts.push(`(vs ${lastVsOpp._opponent})`);
+            }
+        }
+
+        // --- SPECIAL: Last Game with standout performance ---
+        if (cat.group === "Last Game") {
+            const pts = v(lastGame, 'PTS');
+            const reb = v(lastGame, 'REB');
+            const ast = v(lastGame, 'AST');
+            if (pts >= 30) score += 3;
+            else if (pts >= 25) score += 2;
+            if (reb >= 10 || ast >= 10) score += 1; // double-double/triple-double potential
+            if (lastGame._opponent) {
+                descParts.push(`(vs ${lastGame._opponent})`);
+            }
+        }
+
+        // --- SPECIAL: Career — boost if season significantly differs from career ---
+        if (cat.group === "Career") {
+            let careerBonus = 0;
+            for (const st of cat.stats) {
+                const careerVal = v(career, st);
+                const seasonVal = v(season, st);
+                if (careerVal === 0) continue;
+                const diff = Math.abs((seasonVal - careerVal) / careerVal);
+                if (diff >= 0.20) careerBonus += 2; // Having a notably different season vs career
+                else if (diff >= 0.10) careerBonus += 1;
+            }
+            score += careerBonus;
+            if (careerBonus > 0) {
+                const seasonParts = cat.stats.map(st => `${fmt(st, v(season, st))} ${st.toLowerCase()}`);
+                descParts.push(`(This Season: ${seasonParts.join(', ')})`);
+            }
+        }
+
+        // --- SPECIAL: AST/TO ratio boost ---
+        if (cat.stats.includes('AST') && cat.stats.includes('TO')) {
+            const ast = v(source, 'AST');
+            const to = v(source, 'TO');
             if (to > 0 && ast / to >= 2.5) score += 2;
+        }
+
+        // --- PENALTY: Season categories score lower so they only appear as fallback ---
+        if (cat.group === "Season") {
+            score = Math.max(score - 2, 0.1); // Reduce but keep > 0 so they're available
         }
 
         if (score > 0) {
             scored.push({
-                ...cat,
-                score,
+                ...cat, score,
                 code: `${prefix}${cat.suffix}`,
                 desc: descParts.join(' / ')
             });
@@ -382,33 +440,51 @@ function scoreCategories(season, career, last5, lastGame, prefix) {
     return scored;
 }
 
-// --- PREGAME: PICK BEST 2-3 CATEGORIES (spread across groups) ---
+// --- PREGAME: PICK BEST 2-3 CATEGORIES ---
+// Priority: Last vs Opp > Last Game > Last 5 > Career > Season > Bio
 function pickBestCategories(scoredCategories) {
     if (scoredCategories.length === 0) return [];
 
-    // Sort by score descending
-    scoredCategories.sort((a, b) => b.score - a.score);
+    const groupPriority = { "Last vs Opp": 0, "Last Game": 1, "Last 5": 2, "Career": 3, "Season": 4, "Bio": 5 };
+
+    // Sort: first by group priority, then by score within group
+    scoredCategories.sort((a, b) => {
+        const pa = groupPriority[a.group] ?? 99;
+        const pb = groupPriority[b.group] ?? 99;
+        if (pa !== pb) return pa - pb;
+        return b.score - a.score;
+    });
 
     const picked = [];
     const usedGroups = new Set();
 
-    // First pass: pick top from each unique group
+    // First pass: pick the best from each group, in priority order
     for (const cat of scoredCategories) {
         if (picked.length >= 3) break;
+        if (cat.group === "Bio") continue; // Don't pick bio in first pass
+        if (cat.score < 1 && cat.group === "Season") continue; // Skip low-scoring season cats
         if (!usedGroups.has(cat.group)) {
             picked.push(cat);
             usedGroups.add(cat.group);
         }
     }
 
-    // Second pass: if under 3, fill with remaining highest scoring
+    // Second pass: fill remaining slots with next highest scoring (allow duplicates from same group)
+    for (const cat of scoredCategories) {
+        if (picked.length >= 3) break;
+        if (picked.includes(cat)) continue;
+        if (cat.group === "Bio") continue;
+        picked.push(cat);
+    }
+
+    // If still under 2, add Season fallback then Bio
     if (picked.length < 2) {
-        for (const cat of scoredCategories) {
-            if (picked.length >= 2) break;
-            if (!picked.includes(cat)) {
-                picked.push(cat);
-            }
-        }
+        const seasonBest = scoredCategories.find(c => c.group === "Season" && !picked.includes(c));
+        if (seasonBest) picked.push(seasonBest);
+    }
+    if (picked.length < 2) {
+        const bio = scoredCategories.find(c => c.group === "Bio" && !picked.includes(c));
+        if (bio) picked.push(bio);
     }
 
     return picked.slice(0, 3).map(c => ({
@@ -439,10 +515,17 @@ app.get('/api/pregame', async (req, res) => {
         const { away, home } = req.query;
         if (!away || !home) return res.status(400).json({ error: "Missing teams" });
 
-        const processTeam = async (teamId, isHome) => {
-            const response = await fetch(`http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/teams/${teamId}?enable=roster`);
-            const data = await response.json();
-            const teamInfo = data.team;
+        // Fetch both rosters to get team abbreviations for opponent lookups
+        const [awayRes, homeRes] = await Promise.all([
+            fetch(`http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/teams/${away}?enable=roster`),
+            fetch(`http://site.api.espn.com/apis/site/v2/sports/basketball/${LEAGUE}/teams/${home}?enable=roster`)
+        ]);
+        const awayData = (await awayRes.json()).team;
+        const homeData = (await homeRes.json()).team;
+        const awayAbbrev = awayData.abbreviation;
+        const homeAbbrev = homeData.abbreviation;
+
+        const processTeam = async (teamInfo, isHome, opponentAbbrev) => {
             const athletes = teamInfo.athletes || [];
             const teamPrefix = isHome ? "2" : "1";
 
@@ -468,11 +551,11 @@ app.get('/api/pregame', async (req, res) => {
                     if (!playerData) return null;
 
                     const { season, career } = parseSeasonAndCareer(playerData.statsData);
-                    const { last5, lastGame } = parseLast5AndLastGame(playerData.logData);
+                    const { last5, lastGame, lastVsOpp } = parseLast5AndLastGame(playerData.logData, opponentAbbrev);
 
-                    if (!season || (season.GP || 0) < 5) return null; // Skip players with very few games
+                    if (!season || (season.GP || 0) < 5) return null;
 
-                    const scored = scoreCategories(season, career, last5, lastGame, prefix);
+                    const scored = scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix);
                     const storylines = pickBestCategories(scored);
 
                     if (storylines.length === 0) return null;
@@ -489,7 +572,11 @@ app.get('/api/pregame', async (req, res) => {
             return { team: teamInfo.displayName, color: teamInfo.color || "333333", isHome, players: processedPlayers };
         };
 
-        const [awayTeam, homeTeam] = await Promise.all([processTeam(away, false), processTeam(home, true)]);
+        // Away team's opponent is the home team, and vice versa
+        const [awayTeam, homeTeam] = await Promise.all([
+            processTeam(awayData, false, homeAbbrev),
+            processTeam(homeData, true, awayAbbrev)
+        ]);
         res.json({ teams: [awayTeam, homeTeam] });
     } catch (error) {
         console.error("Error processing pregame:", error);
