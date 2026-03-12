@@ -433,10 +433,8 @@ function scoreCategories(season, career, last5, lastGame, lastVsOpp, prefix) {
             if (to > 0 && ast / to >= 2.5) score += 2;
         }
 
-        // --- PENALTY: Season categories score lower so they only appear as fallback ---
-        if (cat.group === "Season") {
-            score = Math.max(score - 2, 0.1); // Reduce but keep > 0 so they're available
-        }
+        // Season categories keep their natural score — no artificial penalty.
+        // They'll only appear when higher-priority groups don't meet the quality bar.
 
         if (score > 0) {
             scored.push({
@@ -457,34 +455,51 @@ function pickBestCategories(scoredCategories) {
 
     const groupPriority = { "Last vs Opp": 0, "Last Game": 1, "Last 5": 2, "Career": 3, "Season": 4, "Bio": 5 };
 
-    // Sort: first by group priority, then by score within group
+    // Sort by score descending — the quality threshold in the pick logic
+    // handles filtering out weak lines, so best stats float to the top
     scoredCategories.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        // Tiebreak: prefer higher-priority groups
         const pa = groupPriority[a.group] ?? 99;
         const pb = groupPriority[b.group] ?? 99;
-        if (pa !== pb) return pa - pb;
-        return b.score - a.score;
+        return pa - pb;
     });
 
     const picked = [];
     const usedGroups = new Set();
 
-    // First pass: pick the best from each group, in priority order
+    // First pass: pick the best from each high-priority group, BUT only if the score
+    // meets a quality bar. Weak stat lines from L5/Last Game/Career should NOT
+    // beat a clean Season average for bench players.
+    const MIN_QUALITY = 3; // Need score >= 3 to justify a non-Season category
     for (const cat of scoredCategories) {
         if (picked.length >= 3) break;
-        if (cat.group === "Bio") continue; // Don't pick bio in first pass
-        if (cat.score < 1 && cat.group === "Season") continue; // Skip low-scoring season cats
+        if (cat.group === "Bio") continue;
+        if (cat.group !== "Season" && cat.score < MIN_QUALITY) continue; // Skip weak non-Season lines
         if (!usedGroups.has(cat.group)) {
             picked.push(cat);
             usedGroups.add(cat.group);
         }
     }
 
-    // Second pass: fill remaining slots with next highest scoring (allow duplicates from same group)
+    // Second pass: fill remaining slots — prefer highest score regardless of group,
+    // but still require MIN_QUALITY for non-Season categories
     for (const cat of scoredCategories) {
         if (picked.length >= 3) break;
         if (picked.includes(cat)) continue;
         if (cat.group === "Bio") continue;
+        if (cat.group !== "Season" && cat.score < MIN_QUALITY) continue;
         picked.push(cat);
+    }
+
+    // Third pass: if still not full, allow Season categories by score
+    if (picked.length < 3) {
+        for (const cat of scoredCategories) {
+            if (picked.length >= 3) break;
+            if (picked.includes(cat)) continue;
+            if (cat.group !== "Season") continue;
+            picked.push(cat);
+        }
     }
 
     // If still under 2, add Season fallback then Bio
