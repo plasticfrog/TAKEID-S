@@ -88,7 +88,55 @@ document.getElementById('pregameBtn').addEventListener('click', async () => {
 });
 
 // --- LIVE TRACKER LOGIC ---
-// [Kept exactly the same as your previous working version]
+const trackerResults = document.getElementById('trackerResults');
+const statusText = document.getElementById('statusText');
+
+async function loadGame(gameId) {
+    if (!gameId) { trackerResults.innerHTML = ''; statusText.textContent = 'Select a game to start tracking...'; return; }
+    statusText.textContent = 'Loading box score...';
+    trackerResults.innerHTML = '';
+    try {
+        const res = await fetch(`/api/game/${gameId}`);
+        const data = await res.json();
+
+        // Show score & clock
+        const gi = data.gameInfo;
+        statusText.textContent = `${gi.awayAbbrev} ${gi.awayScore} - ${gi.homeAbbrev} ${gi.homeScore}  |  ${gi.status}`;
+
+        data.teams.forEach(team => {
+            const teamDiv = document.createElement('div');
+            teamDiv.classList.add('team-block');
+            teamDiv.innerHTML = `<div class="team-header" style="background-color: #${team.color};"><h3>${team.team} ${team.isHome ? '(HOME)' : '(AWAY)'}</h3></div>`;
+
+            const table = document.createElement('table');
+            table.classList.add('tracker-table');
+            table.innerHTML = `<tr><th width="35%">Player</th><th>Stats</th><th width="30%">Take IDs</th></tr>`;
+
+            team.players.forEach(p => {
+                const matchHtml = p.matches.map(m => `
+                    <div class="match-badge">
+                        <div class="badge-row">
+                            <span class="match-cat">${m.category}</span>
+                            <span class="match-id">${m.id}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                table.insertAdjacentHTML('beforeend', `<tr><td class="player-name"><div><span class="jersey">#${p.jersey}</span> ${p.name}</div><div class="player-code">${p.playerCode}</div></td><td class="stats-cell">${p.statsSummary}</td><td class="match-cell">${matchHtml}</td></tr>`);
+            });
+
+            teamDiv.appendChild(table);
+            trackerResults.appendChild(teamDiv);
+        });
+    } catch (err) {
+        statusText.textContent = 'Error loading game data.';
+        console.error(err);
+    }
+}
+
+gameSelect.addEventListener('change', () => loadGame(gameSelect.value));
+document.getElementById('refreshBtn').addEventListener('click', () => { if (gameSelect.value) loadGame(gameSelect.value); });
+
 window.switchTab = function(tabName) {
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
