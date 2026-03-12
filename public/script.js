@@ -1,4 +1,3 @@
-// ... [Keep Search Logic at top same as before] ...
 let dataset = [];
 fetch('data.json').then(r => r.json()).then(d => { dataset = d; });
 const searchInput = document.getElementById('searchInput');
@@ -66,21 +65,34 @@ async function updateTracker(gameId) {
         statusText.textContent = `Updating...`;
         const res = await fetch(`/api/game/${gameId}`);
         const data = await res.json();
-        renderTracker(data.teams);
+        // Pass the full data object now, not just teams
+        renderTracker(data);
         statusText.textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
     } catch (err) { statusText.textContent = "Error fetching data."; }
 }
 
-function renderTracker(teams) {
+function renderTracker(data) {
     trackerResults.innerHTML = '';
     
-    teams.forEach(team => {
+    // --- RENDER LIVE GAME SCOREBOARD ---
+    if (data.gameInfo) {
+        const scoreBoard = document.createElement('div');
+        scoreBoard.classList.add('live-scoreboard');
+        scoreBoard.innerHTML = `
+            <span class="sb-team">${data.gameInfo.awayAbbrev} ${data.gameInfo.awayScore}</span> 
+            <span class="sb-divider">-</span> 
+            <span class="sb-team">${data.gameInfo.homeScore} ${data.gameInfo.homeAbbrev}</span>
+            <span class="sb-clock">| ${data.gameInfo.status}</span>
+        `;
+        trackerResults.appendChild(scoreBoard);
+    }
+
+    data.teams.forEach(team => {
         if(team.players.length === 0) return;
 
         const teamDiv = document.createElement('div');
         teamDiv.classList.add('team-block');
         
-        // --- TEAM HEADER WITH COLOR ---
         const header = document.createElement('div');
         header.classList.add('team-header');
         header.style.backgroundColor = `#${team.color}`;
@@ -96,15 +108,15 @@ function renderTracker(teams) {
         team.players.forEach(p => {
             const row = document.createElement('tr');
             
-            // Matches HTML
             let matchesHtml = p.matches && p.matches.length > 0 
                 ? p.matches.map(m => `<div class="match-badge"><span class="match-cat">${m.category}</span><span class="match-id">${m.id}</span></div>`).join('')
                 : '<span class="no-match">-</span>';
 
-            // Player Name with Jersey
+            // Added Player Code right under the name
             row.innerHTML = `
                 <td class="player-name">
-                    <span class="jersey">#${p.jersey}</span> ${p.name}
+                    <div><span class="jersey">#${p.jersey}</span> ${p.name}</div>
+                    <div class="player-code">Code: ${p.playerCode}</div>
                 </td>
                 <td class="stat-sum">${p.statsSummary}</td>
                 <td class="match-cell">${matchesHtml}</td>
