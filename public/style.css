@@ -1,41 +1,105 @@
-/* --- NEW SCOREBOARD & PLAYER CODES --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f4f9;
+    display: flex;
+    justify-content: center;
+    padding-top: 20px;
+    margin: 0;
+}
 
-/* Live Scoreboard Header */
+.container {
+    width: 95%;
+    max-width: 800px; /* Restored to original clean width */
+}
+
+h1 { text-align: center; color: #333; margin-bottom: 20px;}
+
+/* --- TABS --- */
+.nav-tabs { display: flex; justify-content: center; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+.tab-btn { background: none; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; color: #666; border-bottom: 3px solid transparent; }
+.tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; font-weight: bold; }
+
+/* --- SEARCH --- */
+.search-wrapper { position: relative; margin-top: 10px;}
+input { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+.results-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; border-radius: 0 0 8px 8px;}
+.result-item { padding: 8px 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.result-item:hover { background-color: #f0f8ff; }
+.category-text { font-weight: 500; color: #333; font-size: 0.95em; }
+.take-id { font-weight: 800; color: #0056b3; font-family: monospace; font-size: 1.2em; background: #e7f1ff; padding: 1px 6px; border-radius: 4px; }
+
+/* --- TRACKER CONTROLS --- */
+.tracker-controls { display: flex; gap: 10px; margin-bottom: 10px; }
+#gameSelect { flex-grow: 1; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; }
+#refreshBtn { padding: 10px 15px; font-size: 18px; cursor: pointer; background: white; border: 1px solid #ccc; border-radius: 6px; }
+#refreshBtn:hover { background: #eee; }
+.status-text { font-size: 12px; color: #888; text-align: right; margin-bottom: 15px; }
+
+/* --- LIVE SCOREBOARD (NEW) --- */
 .live-scoreboard {
     background: white;
     padding: 12px 20px;
-    margin-bottom: 15px;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     text-align: center;
     font-size: 1.2em;
     font-weight: 600;
     color: #333;
-    border: 1px solid #ddd;
+    border: 1px solid #eee;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 15px;
 }
+.sb-team { color: #222; }
+.sb-divider { color: #ccc; }
+.sb-clock { font-size: 0.85em; color: #d9534f; font-weight: 500; margin-left: 10px; }
 
-.sb-team { color: #000; }
-.sb-divider { color: #999; }
-.sb-clock { 
-    font-size: 0.8em; 
-    color: #d9534f; /* Red to signify live clock */
-    font-weight: 500; 
-    margin-left: 10px; 
-}
+/* --- TEAM BLOCK --- */
+.team-block { background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }
 
-/* Player Input Code styling */
+/* Dynamic Header */
+.team-header { padding: 15px; color: white; }
+.team-header h3 { margin: 0; font-size: 1.2em; text-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center;}
+.loc-badge { font-size: 0.75em; opacity: 0.9; font-weight: normal; background: rgba(0,0,0,0.2); padding: 3px 6px; border-radius: 4px;}
+
+/* Table (Restored clean padding) */
+.tracker-table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+.tracker-table th { text-align: left; color: #888; font-weight: normal; padding: 12px 10px; border-bottom: 2px solid #eee; background: #fdfdfd; }
+.tracker-table td { padding: 12px 10px; border-bottom: 1px solid #f9f9f9; vertical-align: middle;}
+
+/* Player Column */
+.player-name { font-weight: 500; color: #222; }
+.jersey { color: #888; font-size: 0.85em; margin-right: 5px; font-weight: normal; }
+
+/* Player Code (NEW) */
 .player-code {
-    font-size: 0.75em;
+    font-size: 0.8em;
     color: #777;
-    margin-top: 3px;
+    margin-top: 4px;
     font-family: monospace;
-    background: #f1f1f1;
+    background: #f4f4f4;
     display: inline-block;
     padding: 2px 6px;
     border-radius: 4px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #eaeaea;
 }
+
+/* Stats Column (Restored clean font) */
+.stat-sum { color: #444; font-size: 0.95em; font-weight: 500; line-height: 1.4; }
+
+/* Match Column */
+.match-cell { display: flex; flex-direction: column; gap: 4px; }
+.match-badge { display: flex; justify-content: space-between; background: #f8f9fa; border: 1px solid #eee; border-radius: 4px; padding: 4px 8px; font-size: 0.85em; }
+.match-cat { color: #555; margin-right: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.match-id { font-weight: bold; color: #0056b3; font-family: monospace; }
+.no-match { color: #ccc; font-style: italic; }
+
+/* --- REFERENCE BOX --- */
+.quick-ref { position: fixed; top: 20px; right: 20px; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 200px; z-index: 500; display: none; }
+@media (min-width: 1050px) { .quick-ref { display: block; } }
+.quick-ref h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+.quick-ref ul { list-style: none; padding: 0; margin: 0; }
+.quick-ref li { font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.quick-ref span.ref-id { font-weight: bold; color: #007bff; }
