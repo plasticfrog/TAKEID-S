@@ -41,7 +41,11 @@ button { cursor: pointer; } button:hover { background: #eee; }
 .match-cell { display: flex; flex-direction: column; gap: 3px; }
 
 /* TIGHTER BADGES */
-.match-badge { display: flex; flex-direction: column; background: #f8f9fa; border: 1px solid #eee; border-radius: 3px; padding: 3px 5px; font-size: 0.9em; }
+.match-badge { display: flex; flex-direction: column; background: #f8f9fa; border: 1px solid #eee; border-radius: 3px; padding: 3px 5px; font-size: 0.9em; cursor: pointer; user-select: none; transition: background-color 0.15s, border-color 0.15s; }
+.match-badge.badge-green { background: #d4edda; border-color: #28a745; }
+.match-badge.badge-green .match-id { color: #155724; }
+.match-badge.badge-red { background: #f8d7da; border-color: #dc3545; }
+.match-badge.badge-red .match-id { color: #721c24; }
 .badge-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
 .match-cat { color: #444; margin-right: 5px; line-height: 1.2;}
 .match-id { font-weight: bold; color: #0056b3; font-family: monospace; font-size: 1em;}

@@ -70,7 +70,7 @@ document.getElementById('pregameBtn').addEventListener('click', async () => {
             
             team.players.forEach(p => {
                 const storiesHtml = p.storylines.map(s => `
-                    <div class="match-badge compact-badge">
+                    <div class="match-badge compact-badge" onclick="cycleBadge(this)">
                         <div class="badge-row">
                             <span class="match-cat"><b>${s.title}</b>: ${s.desc}</span>
                             <span class="match-id">${s.code}</span>
@@ -136,6 +136,18 @@ async function loadGame(gameId) {
 
 gameSelect.addEventListener('change', () => loadGame(gameSelect.value));
 document.getElementById('refreshBtn').addEventListener('click', () => { if (gameSelect.value) loadGame(gameSelect.value); });
+
+// Cycle badge: grey → green → red → grey
+window.cycleBadge = function(el) {
+    if (el.classList.contains('badge-red')) {
+        el.classList.remove('badge-red');
+    } else if (el.classList.contains('badge-green')) {
+        el.classList.remove('badge-green');
+        el.classList.add('badge-red');
+    } else {
+        el.classList.add('badge-green');
+    }
+};
 
 window.switchTab = function(tabName) {
     document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
