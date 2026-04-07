@@ -113,14 +113,19 @@ async function loadGame(gameId) {
             table.innerHTML = `<tr><th width="35%">Player</th><th>Stats</th><th width="30%">Take IDs</th></tr>`;
 
             team.players.forEach(p => {
-                const matchHtml = p.matches.map(m => `
-                    <div class="match-badge">
+                const matchHtml = p.matches.map(m => {
+                    // SEASON/TONIGHT matches have seasonAvg and tonight fields
+                    const label = m.seasonAvg != null
+                        ? `${m.category} (Avg: ${m.seasonAvg} / Tonight: ${m.tonight})`
+                        : m.category;
+                    return `
+                    <div class="match-badge" onclick="cycleBadge(this)">
                         <div class="badge-row">
-                            <span class="match-cat">${m.category}</span>
+                            <span class="match-cat">${label}</span>
                             <span class="match-id">${m.id}</span>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
 
                 table.insertAdjacentHTML('beforeend', `<tr><td class="player-name"><div><span class="jersey">#${p.jersey}</span> ${p.name}</div><div class="player-code">${p.playerCode}</div></td><td class="stats-cell">${p.statsSummary}</td><td class="match-cell">${matchHtml}</td></tr>`);
             });

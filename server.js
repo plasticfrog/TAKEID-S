@@ -30,10 +30,94 @@ try {
 
 // --- THRESHOLDS ---
 const THRESHOLDS = {
-    "PTS": 8, "REBS": 5, "ASSTS": 4, 
-    "BLKS": 2, "STLS": 2, "3-PT FG": 3, 
+    "PTS": 8, "REBS": 5, "ASSTS": 4,
+    "BLKS": 2, "STLS": 2, "3-PT FG": 3,
     "FG": 4, "FT": 4, "TO": 4, "MINS": 20
 };
+
+// --- SEASON AVERAGES CACHE (for SEASON/TONIGHT live tracker categories) ---
+// Keyed by gameId, stores { athleteId: { PTS, REBS, ASSTS, ... } }
+const seasonCache = {};
+
+async function fetchSeasonAverages(gameId, athleteIds) {
+    if (seasonCache[gameId]) return seasonCache[gameId];
+    const cache = {};
+    // Batch in groups of 5 to avoid hammering ESPN
+    for (let i = 0; i < athleteIds.length; i += 5) {
+        const batch = athleteIds.slice(i, i + 5);
+        const results = await Promise.all(batch.map(async (id) => {
+            try {
+                const res = await fetch(`https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${id}/stats`);
+                const data = await res.json();
+                const cats = data?.categories;
+                if (!cats || !cats[0]) return { id, avg: null };
+                const labels = cats[0].labels || [];
+                const seasonRow = cats[0].statistics?.[0]?.stats || [];
+                const avg = {};
+                labels.forEach((lbl, idx) => {
+                    const val = parseFloat(seasonRow[idx]) || 0;
+                    // Map ESPN labels to our stat keys
+                    if (lbl === "PTS") avg.PTS = val;
+                    else if (lbl === "REB") avg.REBS = val;
+                    else if (lbl === "AST") avg.ASSTS = val;
+                    else if (lbl === "BLK") avg.BLKS = val;
+                    else if (lbl === "STL") avg.STLS = val;
+                    else if (lbl === "TO") avg.TO = val;
+                    else if (lbl === "FGM") avg.FG = val;
+                    else if (lbl === "FTM") avg.FT = val;
+                    else if (lbl === "3PM") avg["3-PT FG"] = val;
+                    else if (lbl === "FG%") avg["FG PCT"] = val;
+                    else if (lbl === "3P%") avg["3-PT FG PCT"] = val;
+                    else if (lbl === "FT%") avg["FT PCT"] = val;
+                    else if (lbl === "OREB") avg["OFF REBS"] = val;
+                    else if (lbl === "MIN") avg.MINS = val;
+                });
+                return { id, avg };
+            } catch { return { id, avg: null }; }
+        }));
+        results.forEach(r => { if (r.avg) cache[r.id] = r.avg; });
+    }
+    seasonCache[gameId] = cache;
+    return cache;
+}
+
+// Map SEASON/TONIGHT database categories (5176-5187) to stat keys
+const SEASON_TONIGHT_MAP = {
+    "5176": "PTS", "5177": "REBS", "5178": "ASSTS", "5179": "BLKS",
+    "5180": "FG", "5181": "3-PT FG", "5182": "FT",
+    "5183": "FG PCT", "5184": "3-PT FG PCT", "5185": "FT PCT",
+    "5186": "OFF REBS", "5187": "TO"
+};
+
+function getSeasonTonightMatches(playerStats, seasonAvg) {
+    if (!seasonAvg) return [];
+    const matches = [];
+    for (const [id, statKey] of Object.entries(SEASON_TONIGHT_MAP)) {
+        const tonight = playerStats[statKey] || 0;
+        const season = seasonAvg[statKey] || 0;
+        if (season === 0) continue;
+        // Only suggest if tonight's number is notably above season average
+        // (at least 50% above, or at least +5 for counting stats)
+        const diff = tonight - season;
+        const pctAbove = diff / season;
+        const isCountingStat = !statKey.includes("PCT");
+        if (isCountingStat && (pctAbove >= 0.5 || diff >= 5) && tonight >= 5) {
+            const item = TAKE_ID_DB.find(t => t.id === id);
+            if (item) {
+                matches.push({
+                    id: item.id,
+                    category: item.category,
+                    score: Math.min(diff, 10) + 5, // Score high so these surface
+                    seasonAvg: Math.round(season * 10) / 10,
+                    tonight: tonight
+                });
+            }
+        }
+    }
+    // Sort by how far above season avg
+    matches.sort((a, b) => b.score - a.score);
+    return matches.slice(0, 2); // Max 2 season/tonight suggestions
+}
 
 // --- HELPER FUNCTIONS ---
 function findStatIndex(names, target) {
@@ -694,6 +778,17 @@ app.get('/api/game/:id', async (req, res) => {
         const processedTeams = [];
         const playerGroups = data.boxscore?.players || [];
 
+        // Collect all athlete IDs and fetch season averages (cached after first call)
+        const allAthleteIds = [];
+        for (const tg of playerGroups) {
+            for (const sd of (tg.statistics || [])) {
+                for (const ath of (sd.athletes || [])) {
+                    if (ath.athlete?.id) allAthleteIds.push(ath.athlete.id);
+                }
+            }
+        }
+        const seasonAvgs = await fetchSeasonAverages(gameId, allAthleteIds);
+
         for (const teamGroup of playerGroups) {
             const teamId = teamGroup.team.id;
             const teamName = teamGroup.team.displayName;
@@ -765,14 +860,22 @@ app.get('/api/game/:id', async (req, res) => {
                     };
 
                     const topMatches = getTopMatches(pStats);
-                    
-                    if (topMatches.length > 0 || pStats.PTS >= 10) {
+
+                    // SEASON/TONIGHT matches — compare tonight's stats to season avg
+                    const athleteId = ath.athlete.id;
+                    const seasonAvg = seasonAvgs[athleteId];
+                    const seasonTonightMatches = getSeasonTonightMatches(pStats, seasonAvg);
+
+                    // Combine: regular matches first, then season/tonight
+                    const allMatches = [...topMatches, ...seasonTonightMatches];
+
+                    if (allMatches.length > 0 || pStats.PTS >= 10) {
                         processedPlayers.push({
                             name: name,
                             jersey: jersey,
-                            playerCode: playerCode, // Send the code to the frontend
+                            playerCode: playerCode,
                             statsSummary: getDynamicStatString(displayStats, topMatches),
-                            matches: topMatches
+                            matches: allMatches
                         });
                     }
                 }
